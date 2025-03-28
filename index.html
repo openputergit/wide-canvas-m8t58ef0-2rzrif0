@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brick Wall Pattern</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .brick-wall {
+            background: linear-gradient(#4a8599 2px, transparent 2px) 0 -1px,
+                        linear-gradient(90deg, #4a8599 2px, transparent 2px) -1px 0;
+            background-color: #76a5b7;
+            background-size: 50px 25px;
+            position: relative;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .brick {
+            position: absolute;
+            width: 48px;
+            height: 23px;
+            background: #76a5b7;
+            border: 2px solid #4a8599;
+            transition: all 0.3s ease;
+        }
+        
+        .brick:hover {
+            background: #4a8599;
+            cursor: pointer;
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 640px) {
+            .brick-wall {
+                background-size: 40px 20px;
+            }
+            
+            .brick {
+                width: 38px;
+                height: 18px;
+            }
+        }
+
+        /* Animation for score increase */
+        @keyframes scoreUp {
+            0% { opacity: 0; transform: translateY(0); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        
+        .score-animation {
+            animation: scoreUp 1s ease-out forwards;
+            position: absolute;
+            color: #fff;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="relative">
+        <!-- Header with game info -->
+        <div class="absolute top-0 left-0 z-10 w-full flex justify-between items-center p-4 text-white">
+            <div class="flex items-center space-x-2">
+                <i class="bi bi-bricks text-xl"></i>
+                <h1 class="text-lg font-bold">Brick Breaker</h1>
+            </div>
+            <div class="flex space-x-4">
+                <div class="flex items-center">
+                    <i class="bi bi-star-fill text-yellow-400 mr-1"></i>
+                    <span id="score">0</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="bi bi-clock mr-1"></i>
+                    <span id="timer">30</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game area -->
+        <div class="brick-wall relative" id="brickWall"></div>
+
+        <!-- Game over screen -->
+        <div id="gameOverScreen" class="hidden absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-20 text-white">
+            <h2 class="text-3xl font-bold mb-4">Game Over!</h2>
+            <p class="text-xl mb-2">Your Score: <span id="finalScore">0</span></p>
+            <p class="text-xl mb-6">High Score: <span id="highScore">0</span></p>
+            <button id="playAgainBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full transition duration-300 flex items-center">
+                <i class="bi bi-arrow-repeat mr-2"></i> Play Again
+            </button>
+        </div>
+
+        <!-- Start screen -->
+        <div id="startScreen" class="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-20 text-white">
+            <h2 class="text-3xl font-bold mb-4">Brick Breaker</h2>
+            <p class="text-xl mb-6 text-center px-4">Tap or click as many bricks as you can in 30 seconds!</p>
+            <button id="startBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition duration-300 flex items-center">
+                <i class="bi bi-play-fill mr-2"></i> Start Game
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const wall = document.getElementById('brickWall');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const finalScoreElement = document.getElementById('finalScore');
+        const highScoreElement = document.getElementById('highScore');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const startScreen = document.getElementById('startScreen');
+        const startBtn = document.getElementById('startBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        
+        let score = 0;
+        let timeRemaining = 30;
+        let gameTimer;
+        let highScore = localStorage.getItem('brickBreakerHighScore') || 0;
+        highScoreElement.textContent = highScore;
+        
+        function createBricks() {
+            wall.innerHTML = '';
+            const wallWidth = window.innerWidth;
+            const wallHeight = window.innerHeight;
+            
+            const brickWidth = window.innerWidth <= 640 ? 40 : 50;
+            const brickHeight = window.innerWidth <= 640 ? 20 : 25;
+            
+            const bricksPerRow = Math.ceil(wallWidth / brickWidth);
+            const rows = Math.ceil(wallHeight / brickHeight);
+            
+            for(let row = 0; row < rows; row++) {
+                const offset = row % 2 === 0 ? 0 : brickWidth / 2;
+                
+                for(let col = 0; col < bricksPerRow + 1; col++) {
+                    const brick = document.createElement('div');
+                    brick.className = 'brick';
+                    brick.style.left = `${col * brickWidth - offset}px`;
+                    brick.style.top = `${row * brickHeight}px`;
+                    
+                    if (window.innerWidth <= 640) {
+                        brick.style.width = '38px';
+                        brick.style.height = '18px';
+                    }
+                    
+                    wall.appendChild(brick);
+                }
+            }
+        }
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            score = 0;
+            timeRemaining = 30;
+            scoreElement.textContent = score;
+            timerElement.textContent = timeRemaining;
+            
+            gameTimer = setInterval(() => {
+                timeRemaining--;
+                timerElement.textContent = timeRemaining;
+                
+                if (timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(gameTimer);
+            finalScoreElement.textContent = score;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('brickBreakerHighScore', highScore);
+                highScoreElement.textContent = highScore;
+            }
+            
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function showScoreAnimation(x, y) {
+            const scoreAnim = document.createElement('div');
+            scoreAnim.className = 'score-animation';
+            scoreAnim.textContent = '+1';
+            scoreAnim.style.left = `${x}px`;
+            scoreAnim.style.top = `${y}px`;
+            document.body.appendChild(scoreAnim);
+            
+            // Remove element after animation completes
+            setTimeout(() => {
+                document.body.removeChild(scoreAnim);
+            }, 1000);
+        }
+
+        // Initialize high score
+        highScoreElement.textContent = highScore;
+
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        
+        playAgainBtn.addEventListener('click', () => {
+            gameOverScreen.classList.add('hidden');
+            startGame();
+        });
+
+        // Wall click handler for brick animation and scoring
+        wall.addEventListener('click', (e) => {
+            if (e.target.classList.contains('brick') && timeRemaining > 0 && !startScreen.classList.contains('flex')) {
+                e.target.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    e.target.style.transform = 'scale(1)';
+                }, 300);
+                
+                // Score point
+                score++;
+                scoreElement.textContent = score;
+                
+                // Show score animation
+                showScoreAnimation(e.clientX, e.clientY);
+            }
+        });
+
+        // Initial creation
+        createBricks();
+        
+        // Recreate on window resize
+        window.addEventListener('resize', () => {
+            createBricks();
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
